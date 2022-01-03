@@ -1,0 +1,166 @@
+{{template "base" .}}
+
+{{define "title"}}
+    Admin User
+{{end}}
+
+{{define "content"}}
+    <h2 class="mt-5">Admin Users</h2>
+    <hr>
+
+    <form method="post" action="" name="user_form" id="user_form" class="needs-validation" autocomplete="off" novalidate="">
+        <div class="mb-3">
+            <label for="first_name" class="form-label">First Name</label>
+            <input type="text" class="form-control" id="first_name" name="first_name" required="" autocomplete="first_name-new">
+        </div>
+
+        <div class="mb-3">
+            <label for="last_name" class="form-label">Last Name</label>
+            <input type="text" class="form-control" id="last_name" name="last_name" required="" autocomplete="last_name-new">
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="text" class="form-control" id="email" name="email" required="" autocomplete="email-new">
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" autocomplete="password-new">
+        </div>
+
+        <div class="mb-3">
+            <label for="verify_password" class="form-label">Verify Password</label>
+            <input type="password" class="form-control" id="verify_password" name="verify_password" autocomplete="verify_password-new">
+        </div>
+
+        <hr>
+
+        <div class="float-start">
+            <a class="btn btn-primary" href="javascript:void(0);" onclick="val()" id="save-btn">Save Changes</a>
+            <a class="btn btn-warning" href="/admin/all-users" id="cancel-btn">Back</a>
+        </div>
+        <div class="float-end">
+            <a class="btn btn-danger d-none" href="javascript:void(0);" id="delete-btn">Delete</a>
+        </div>
+    </form>
+{{end}}
+
+{{define "js"}}
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+<script>
+    const token = localStorage.getItem("token");
+    const id = window.location.pathname.split("/").pop();
+    const delBtn = document.getElementById("delete-btn");
+
+    function val() {
+        const form = document.getElementById("user_form");
+        if (form.checkValidity() === false) {
+            this.event.preventDefault();
+            this.event.stopPropagation();
+            form.classList.add("was-validated");
+            return;
+        }
+
+        form.classList.add("was-validated");
+
+        const password = document.getElementById("password").value;
+        const verifyPassword = document.getElementById("verify_password").value;
+        if (password !== verifyPassword) {
+            swal("Error", "Password do not match!", "error");
+            return;
+        }
+
+        const payload = {
+            id: parseInt(id, 10),
+            first_name: document.getElementById("first_name").value,
+            last_name: document.getElementById("last_name").value,
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value,
+        }
+
+        const requestOptions = {
+            method: 'post',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token,
+            },
+            body: JSON.stringify(payload)
+        }
+
+        fetch("{{.API}}/api/admin/all-users/edit/" + id, requestOptions)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    swal("Error", data.message, "error");
+                } else {
+                    location.href = "/admin/all-users"
+                }
+            })
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        if (id !== "0") {
+            if (id !== "{{.UserID}}") {
+                delBtn.classList.remove("d-none")
+            }
+
+            const requestOptions = {
+                method: 'post',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token,
+                }
+            }
+
+            fetch("{{.API}}/api/admin/all-users/" + id, requestOptions)
+                .then(response => response.json())
+                .then(data => {
+                    if (data) {
+                        document.getElementById("first_name").value = data.first_name
+                        document.getElementById("last_name").value = data.last_name
+                        document.getElementById("email").value = data.email
+                    }
+                })
+        } else {
+
+        }
+    })
+
+    delBtn.addEventListener("click", () => {
+        swal({
+            title: "Are you sure?",
+            text: "You won't be able to undo this!",
+            icon: "warning",
+            buttons: true,
+            dangerMode: true,
+        }).then((willDelete) => {
+            if (willDelete) {
+                const requestOptions = {
+                    method: "post",
+                    headers: {
+                        "Accept": "applications/json",
+                        "Content-Type": "applications/json",
+                        "Authorization": "Bearer " + token
+                    }
+                }
+
+                fetch("{{.API}}/api/admin/all-users/delete/" + id, requestOptions)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            swal("Error", data.message, "error");
+                        } else {
+                            let jsonData = { action: "deleteUser", user_id: parseInt(id, 10) }
+                            socket.send(JSON.stringify(jsonData))
+
+                            location.href = "/admin/all-users"
+                        }
+                    })
+            }
+        });
+    })
+</script>
+{{end}}
